@@ -1,34 +1,43 @@
-from pydantic import BaseModel
-from typing import List, Optional
 from datetime import datetime
-from app.models.ticket import PriorityEnum, StatusEnum
+from typing import List, Optional
 
-# Схема для підзадач (чекліста)
-class TaskBase(BaseModel):
-    category: str
-    description: str
-    is_completed: bool = False
+from pydantic import BaseModel
 
-class TaskSchema(TaskBase):
+from app.models.ticket import PriorityEnum, StatusEnum, TicketGroupEnum
+
+
+# Схема для однієї задачі (щоб віддавати на фронт)
+class TaskSchema(BaseModel):
     id: int
-    ticket_id: int
-    
+    description: str
+    is_completed: bool
+
     class Config:
         from_attributes = True
 
-# Схема для самого тікета
+
 class TicketBase(BaseModel):
     vehicle_id: int
-    title: str
-    priority: PriorityEnum
+    priority: Optional[PriorityEnum] = PriorityEnum.medium
+    status: Optional[StatusEnum] = StatusEnum.queue
+    ticket_group: TicketGroupEnum
+    comment: Optional[str] = None  # Загальний коментар до тікета
+    planned_at: Optional[datetime] = None
+    creator_id: Optional[int] = None
+
+
+class TicketCreate(TicketBase):
+    tasks: List[str]  # Фронт буде присилати масив: ["Заміна ДВРП", "Тарування"]
+
 
 class TicketSchema(TicketBase):
     id: int
-    status: StatusEnum
+    title: str  # Згенеруємо автоматично з задач
     created_at: datetime
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
-    tasks: List[TaskSchema] = []
-    
+
+    tasks: List[TaskSchema] = []  # Вкладаємо задачі всередину тікета
+
     class Config:
         from_attributes = True
