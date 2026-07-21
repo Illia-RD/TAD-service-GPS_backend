@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Імпортуємо моделі, щоб вони зареєструвалися в Base (це важливо для SQLAlchemy)
 # Ми звертаємось до них, щоб примусити Python завантажити ці файли
 # Імпортуємо наші розділені роутери
-from app.api.endpoints import tickets, vehicles
+from app.api.endpoints import dictionaries, tickets, vehicles
 
 # Імпортуємо базові класи для створення таблиць
 from app.core.database import Base, engine
@@ -24,9 +24,11 @@ app.add_middleware(
 )
 
 # Підключаємо роутери
-# Тепер вони чітко рознесені: /api/vehicles та /api/tickets
 app.include_router(vehicles.router, prefix="/api/vehicles", tags=["vehicles"])
 app.include_router(tickets.router, prefix="/api/tickets", tags=["tickets"])
+app.include_router(
+    dictionaries.router, prefix="/api/dictionaries", tags=["dictionaries"]
+)
 
 
 @app.get("/api/ping")

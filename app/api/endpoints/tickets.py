@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -14,6 +15,21 @@ router = APIRouter()
 # Схема для оновлення статусу тікета
 class TicketStatusUpdate(BaseModel):
     status: str
+
+
+class TaskUpdateSchema(BaseModel):
+    id: Optional[int] = None  # Якщо id є - оновлюємо, якщо нема - це нова задача
+    description: str
+    is_completed: bool = False
+
+
+class TicketUpdateSchema(BaseModel):
+    vehicle_id: int
+    ticket_group: str
+    priority: str
+    comment: Optional[str] = None
+    planned_at: Optional[datetime] = None
+    tasks: List[TaskUpdateSchema]  # Приймаємо повні об'єкти задач
 
 
 @router.get("/", response_model=list[TicketSchema])
@@ -119,3 +135,49 @@ def toggle_task(task_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(task)
     return task
+
+
+@router.put("/{ticket_id}", response_model=TicketSchema)
+def update_ticket_full(
+    ticket_id: int, ticket_data: TicketUpdateSchema, db: Session = Depends(get_db)
+):
+    """Повноцінне оновлення тікета разом із синхронізацією задач"""
+    db_ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not db_ticket:
+        raise HTTPException(status_code=404, detail="Тікет не знайдено")
+
+    # 1. Оновлюємо "шапку" тікета
+    db_ticket.vehicle_id = ticket_data.vehicle_id
+    db_ticket.ticket_group = ticket_data.ticket_group
+    db_ticket.priority = ticket_data.priority
+    db_ticket.comment = ticket_data.comment
+    db_ticket.planned_at = ticket_data.planned_at
+
+    # 2. Синхронізуємо задачі
+    existing_tasks = {task.id: task for task in db_ticket.tasks}
+    incoming_ids = [t.id for t in ticket_data.tasks if t.id is not None]
+
+    # А) Видаляємо ті, що були в БД, але юзер їх видалив з форми
+    for task_id, task in existing_tasks.items():
+        if task_id not in incoming_ids:
+            db.delete(task)
+
+    # Б) Оновлюємо існуючі або додаємо абсолютно нові
+    for t_data in ticket_data.tasks:
+        if t_data.id and t_data.id in existing_tasks:
+            # Оновлюємо існуючу
+            existing_task = existing_tasks[t_data.id]
+            existing_task.description = t_data.description
+            existing_task.is_completed = t_data.is_completed
+        else:
+            # Створюємо нову
+            new_task = Task(
+                category="Робота",
+                description=t_data.description,
+                is_completed=t_data.is_completed,
+            )
+            db_ticket.tasks.append(new_task)
+
+    db.commit()
+    db.refresh(db_ticket)
+    return db_ticket
