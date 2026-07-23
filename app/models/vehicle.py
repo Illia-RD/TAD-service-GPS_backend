@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Float, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy import JSON, Column, Integer, String
+from sqlalchemy.orm import relationship  # <-- Додав імпорт для relationship
 
 from app.core.database import Base
 
@@ -7,30 +7,24 @@ from app.core.database import Base
 class Vehicle(Base):
     __tablename__ = "vehicles"
 
+    # Базова інформація про авто
     id = Column(Integer, primary_key=True, index=True)
-    plate = Column(String, unique=True, index=True)
-    vin = Column(String)
-    make = Column(String)
-    model = Column(String)
-    internal_id = Column(String)
-    year = Column(Integer)
-    euro_standard = Column(String)  # "Euro 4", "Euro 5", "Euro 6"
-    group_name = Column(String, default="Без групи")  # Для групування
-    # Паливо
-    tank_volume = Column(Float)
-    tank_dimensions = Column(String)
+    internal_id = Column(String, unique=True, index=True, nullable=False)
+    plate = Column(String, unique=True, index=True, nullable=False)
+    make = Column(String, nullable=False)
+    model = Column(String, nullable=False)
+    vin = Column(String, nullable=True)
+    year = Column(Integer, nullable=True)
+    euro_standard = Column(String, nullable=True)
+    group_name = Column(String, default="Без групи")
 
-    # Обладнання
-    tracker_model = Column(String)
-    tracker_sn = Column(String)
-    tracker_imei = Column(String)
-    sim_operator = Column(String)
-    sim_number = Column(String)
-    drp_type = Column(String)
-    drp_height = Column(Float)
-    other_equipment = Column(String)
+    # Гнучкі поля для незалежного обліку обладнання
+    trackers_data = Column(JSON, default=list)
+    tanks_data = Column(JSON, default=list)
+    drps_data = Column(JSON, default=list)
+    additional_equipment = Column(JSON, default=list)
 
-    # Ось той зв'язок, який шукає Ticket
+    # Зв'язок із сервісними заявками (тікетами)
     tickets = relationship(
         "Ticket", back_populates="vehicle", cascade="all, delete-orphan"
     )

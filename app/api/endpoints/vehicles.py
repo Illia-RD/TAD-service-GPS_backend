@@ -7,13 +7,13 @@ from sqlalchemy.orm import Session
 # Імпортуємо наші розбиті модулі
 from app.api.deps import get_db
 from app.models.vehicle import Vehicle
-from app.schemas.vehicle import VehicleCreate, VehicleSchema
+from app.schemas.vehicle import VehicleCreate, VehicleResponse
 
 # Створюємо роутер для авто
 router = APIRouter()
 
 
-@router.get("/", response_model=List[VehicleSchema])
+@router.get("/", response_model=List[VehicleResponse])
 def get_vehicles(db: Session = Depends(get_db)):
     """Отримати список усіх транспортних засобів"""
     return db.query(Vehicle).all()
@@ -29,7 +29,7 @@ def create_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db)):
 
 
 # --- ДОДАЄМО ЕНДПОІНТ ОНОВЛЕННЯ ---
-@router.put("/{vehicle_id}", response_model=VehicleSchema)
+@router.put("/{vehicle_id}", response_model=VehicleResponse)
 def update_vehicle(
     vehicle_id: int, vehicle: VehicleCreate, db: Session = Depends(get_db)
 ):
