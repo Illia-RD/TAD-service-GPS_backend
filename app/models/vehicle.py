@@ -1,5 +1,5 @@
 from sqlalchemy import JSON, Column, Integer, String
-from sqlalchemy.orm import relationship  # <-- Додав імпорт для relationship
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -18,11 +18,15 @@ class Vehicle(Base):
     euro_standard = Column(String, nullable=True)
     group_name = Column(String, default="Без групи")
 
+    # --- НОВІ КОЛОНКИ ---
+    status = Column(String, default="connected")
+    other_equipment = Column(String, nullable=True)
+
     # Гнучкі поля для незалежного обліку обладнання
     trackers_data = Column(JSON, default=list)
     tanks_data = Column(JSON, default=list)
     drps_data = Column(JSON, default=list)
-    additional_equipment = Column(JSON, default=list)
+    # additional_equipment ВИДАЛЕНО, бо тепер є other_equipment
 
     # Зв'язок із сервісними заявками (тікетами)
     tickets = relationship(

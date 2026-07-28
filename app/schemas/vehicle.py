@@ -1,31 +1,31 @@
-from typing import List, Optional
-
 from pydantic import BaseModel, Field
 
 # --- ДОПОМІЖНІ МОДЕЛІ ДЛЯ ОБЛАДНАННЯ ---
 
 
 class TankItem(BaseModel):
-    id: str  # Унікальний ID баку (наприклад, згенерований uuid на фронті)
-    tank_volume: Optional[float] = None
-    tank_dimensions: Optional[str] = None
-    # Масив drps звідси повністю прибрали
+    id: str
+    tank_volume: float | None = None
+    tank_dimensions: str | None = None
 
 
 class DrpItem(BaseModel):
-    id: str  # Унікальний ID датчика
-    drp_type: Optional[str] = None
-    drp_height: Optional[float] = None
-    tank_id: str  # Зв'язок: вказує, в який саме бак врізано цей ДВРП
+    id: str
+    drp_type: str | None = None
+    drp_height: float | None = None
+    tank_id: str
+    serial_number: str | None = None  # <--- Твоє поле (СЕРІЙНИК ДВРП)
+    connection_type: str | None = None  # <--- Твоє поле (ТИП ПІДКЛЮЧЕННЯ)
 
 
 class TrackerItem(BaseModel):
-    id: str  # Унікальний ID трекера
-    tracker_model: Optional[str] = None
-    tracker_sn: Optional[str] = None
-    tracker_imei: Optional[str] = None
-    sim_operator: Optional[str] = None
-    sim_number: Optional[str] = None
+    id: str
+    tracker_model: str | None = None
+    tracker_imei: str | None = None  # <--- Твоє поле (IMEI)
+    tracker_serial: str | None = None  # <--- Твоє поле (СЕРІЙНИК ТРЕКЕРА)
+    sim_operator: str | None = None
+    sim_number: str | None = None
+    installation_location: str | None = None  # <--- Твоє поле (МІСЦЕ ВСТАНОВЛЕННЯ)
 
 
 # --- ОСНОВНІ СХЕМИ АВТОМОБІЛЯ ---
@@ -36,16 +36,16 @@ class VehicleBase(BaseModel):
     plate: str
     make: str
     model: str
-    vin: Optional[str] = None
-    year: Optional[int] = None
-    euro_standard: Optional[str] = None
-    group_name: Optional[str] = "Без групи"
+    vin: str | None = None
+    year: int | None = None
+    euro_standard: str | None = None
+    group_name: str | None = "Без групи"
+    status: str | None = "connected"  # <--- Твоє поле (СТАТУС)
 
-    # 4 незалежних масиви з обладнанням
-    trackers_data: List[TrackerItem] = Field(default_factory=list)
-    tanks_data: List[TankItem] = Field(default_factory=list)
-    drps_data: List[DrpItem] = Field(default_factory=list)
-    additional_equipment: List[str] = Field(default_factory=list)
+    trackers_data: list[TrackerItem] = Field(default_factory=list)
+    tanks_data: list[TankItem] = Field(default_factory=list)
+    drps_data: list[DrpItem] = Field(default_factory=list)
+    other_equipment: str | None = None  # <--- Твоє поле (ІНШЕ ОБЛАДНАННЯ)
 
 
 class VehicleCreate(VehicleBase):
