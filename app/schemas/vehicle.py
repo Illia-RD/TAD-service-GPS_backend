@@ -28,6 +28,17 @@ class TrackerItem(BaseModel):
     installation_location: str | None = None  # <--- Твоє поле (МІСЦЕ ВСТАНОВЛЕННЯ)
 
 
+# --- НОВА СХЕМА ДЛЯ ФАЙЛІВ ТАРУВАННЯ ---
+class VehicleFileResponse(BaseModel):
+    id: int
+    file_name: str
+    file_path: str
+    file_type: str | None = "тарування"
+
+    class Config:
+        from_attributes = True
+
+
 # --- ОСНОВНІ СХЕМИ АВТОМОБІЛЯ ---
 
 
@@ -59,6 +70,8 @@ class VehicleUpdate(VehicleBase):
 
 class VehicleResponse(VehicleBase):
     id: int
+    # ДОДАНО: Тепер при отриманні авто бекенд віддаватиме ще й масив файлів
+    files: list[VehicleFileResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

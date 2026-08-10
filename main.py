@@ -1,17 +1,15 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles  # <--- 1. ДОДАНО ІМПОРТ
 
-# Імпортуємо моделі, щоб вони зареєструвалися в Base (це важливо для SQLAlchemy)
-# Ми звертаємось до них, щоб примусити Python завантажити ці файли
-# Імпортуємо наші розділені роутери
 from app.api.endpoints import dictionaries, tickets, vehicles
-
-# Імпортуємо базові класи для створення таблиць
 from app.core.database import Base, engine
 
 # Створюємо таблиці в БД
 Base.metadata.create_all(bind=engine)
-
+os.makedirs("uploads/tare_files", exist_ok=True)
 app = FastAPI(title="TAD Service GPS API")
 
 app.add_middleware(
@@ -21,6 +19,11 @@ app.add_middleware(
     allow_methods=["*"],  # Дозволяє всі методи (GET, POST, PUT, DELETE тощо)
     allow_headers=["*"],  # Дозволяє всі заголовки
 )
+
+# --- 2. ДОДАНО РОЗДАЧУ ФАЙЛІВ ---
+# Цей рядок робить папку "uploads" публічною, щоб фронтенд міг завантажити з неї Excel чи TXT
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# -------------------------------
 
 # Підключаємо роутери
 app.include_router(vehicles.router, prefix="/api/vehicles", tags=["vehicles"])

@@ -1,7 +1,21 @@
-from sqlalchemy import JSON, Column, Integer, String, Text
+from sqlalchemy import JSON, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+
+
+class VehicleFile(Base):
+    __tablename__ = "vehicle_files"
+
+    id = Column(Integer, primary_key=True, index=True)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"))
+    file_name = Column(
+        String, nullable=False
+    )  # Оригінальна назва файлу (напр. tank1.csv)
+    file_path = Column(String, nullable=False)  # Де він лежить на сервері
+    file_type = Column(String, default="тарування")
+
+    vehicle = relationship("Vehicle", back_populates="files")
 
 
 class Vehicle(Base):
@@ -30,4 +44,7 @@ class Vehicle(Base):
     # Зв'язок із сервісними заявками (тікетами)
     tickets = relationship(
         "Ticket", back_populates="vehicle", cascade="all, delete-orphan"
+    )
+    files = relationship(
+        "VehicleFile", back_populates="vehicle", cascade="all, delete-orphan"
     )
