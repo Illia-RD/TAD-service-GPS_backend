@@ -42,7 +42,7 @@ def create_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db)):  # no
     db.commit()
     db.refresh(db_vehicle)
     return db_vehicle
-
+    
 
 # --- ЕНДПОІНТ ОНОВЛЕННЯ ---
 @router.put("/{vehicle_id}", response_model=VehicleResponse)

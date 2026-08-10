@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, Integer, String
+from sqlalchemy import JSON, Column, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -26,8 +26,7 @@ class Vehicle(Base):
     trackers_data = Column(JSON, default=list)
     tanks_data = Column(JSON, default=list)
     drps_data = Column(JSON, default=list)
-    # additional_equipment ВИДАЛЕНО, бо тепер є other_equipment
-
+    notes = Column(Text, nullable=True)
     # Зв'язок із сервісними заявками (тікетами)
     tickets = relationship(
         "Ticket", back_populates="vehicle", cascade="all, delete-orphan"

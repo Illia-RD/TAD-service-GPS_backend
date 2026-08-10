@@ -46,6 +46,7 @@ class VehicleBase(BaseModel):
     tanks_data: list[TankItem] = Field(default_factory=list)
     drps_data: list[DrpItem] = Field(default_factory=list)
     other_equipment: str | None = None  # <--- Твоє поле (ІНШЕ ОБЛАДНАННЯ)
+    notes: str | None = None
 
 
 class VehicleCreate(VehicleBase):
