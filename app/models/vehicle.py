@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -9,11 +9,15 @@ class VehicleFile(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"))
-    file_name = Column(
-        String, nullable=False
-    )  # Оригінальна назва файлу (напр. tank1.csv)
-    file_path = Column(String, nullable=False)  # Де він лежить на сервері
+    file_name = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
     file_type = Column(String, default="тарування")
+
+    # --- НОВЕ ПОЛЕ ДЛЯ ПРИВ'ЯЗКИ ДО КОНКРЕТНОГО БАКУ ---
+    tank_index = Column(Integer, nullable=True, default=None)
+
+    # --- ПОЛЕ ДЛЯ КОРЗИНИ ---
+    deleted_at = Column(DateTime, nullable=True, default=None)
 
     vehicle = relationship("Vehicle", back_populates="files")
 
@@ -21,7 +25,6 @@ class VehicleFile(Base):
 class Vehicle(Base):
     __tablename__ = "vehicles"
 
-    # Базова інформація про авто
     id = Column(Integer, primary_key=True, index=True)
     internal_id = Column(String, unique=True, index=True, nullable=False)
     plate = Column(String, unique=True, index=True, nullable=False)
@@ -32,19 +35,23 @@ class Vehicle(Base):
     euro_standard = Column(String, nullable=True)
     group_name = Column(String, default="Без групи")
 
-    # --- НОВІ КОЛОНКИ ---
     status = Column(String, default="connected")
     other_equipment = Column(String, nullable=True)
 
-    # Гнучкі поля для незалежного обліку обладнання
     trackers_data = Column(JSON, default=list)
     tanks_data = Column(JSON, default=list)
     drps_data = Column(JSON, default=list)
     notes = Column(Text, nullable=True)
-    # Зв'язок із сервісними заявками (тікетами)
+
+    # --- ПОЛЕ ДЛЯ КОРЗИНИ ---
+    deleted_at = Column(DateTime, nullable=True, default=None)
+
     tickets = relationship(
         "Ticket", back_populates="vehicle", cascade="all, delete-orphan"
     )
     files = relationship(
-        "VehicleFile", back_populates="vehicle", cascade="all, delete-orphan"
+        "VehicleFile",
+        back_populates="vehicle",
+        cascade="all, delete-orphan",
+        primaryjoin="and_(Vehicle.id == VehicleFile.vehicle_id, VehicleFile.deleted_at == None)",
     )
