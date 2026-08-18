@@ -1,4 +1,14 @@
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -8,16 +18,17 @@ class VehicleFile(Base):
     __tablename__ = "vehicle_files"
 
     id = Column(Integer, primary_key=True, index=True)
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"))
-    file_name = Column(String, nullable=False)
-    file_path = Column(String, nullable=False)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"))
+    file_name = Column(String, index=True)
+    file_path = Column(String)
     file_type = Column(String, default="тарування")
+    tank_index = Column(Integer, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
 
-    # --- НОВЕ ПОЛЕ ДЛЯ ПРИВ'ЯЗКИ ДО КОНКРЕТНОГО БАКУ ---
-    tank_index = Column(Integer, nullable=True, default=None)
-
-    # --- ПОЛЕ ДЛЯ КОРЗИНИ ---
-    deleted_at = Column(DateTime, nullable=True, default=None)
+    h1 = Column(Float, nullable=True)
+    h2 = Column(Float, nullable=True)
+    # === ДОДАЛИ ГАЛОЧКУ ===
+    no_neck_access = Column(Boolean, default=False)
 
     vehicle = relationship("Vehicle", back_populates="files")
 

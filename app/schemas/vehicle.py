@@ -35,12 +35,21 @@ class VehicleFileResponse(BaseModel):
     file_name: str
     file_path: str
     file_type: str | None = "тарування"
-    tank_index: int | None = (
-        None  # <--- ДОДАЛИ ІНДЕКС БАКУ, ЩОБ ФАЙЛ НЕГУБИВСЯ ПРИ ПЕРЕЗАВАНТАЖЕННІ
-    )
+    tank_index: int | None = None
+    h1: float | None = None
+    h2: float | None = None
+    # === ДОДАЛИ ГАЛОЧКУ ===
+    no_neck_access: bool | None = False
 
     class Config:
         from_attributes = True
+
+
+# === НОВА СХЕМА ДЛЯ ОНОВЛЕННЯ ДАНИХ ФАЙЛУ (h1, h2, галочка) ===
+class VehicleFileUpdate(BaseModel):
+    h1: float | None = None
+    h2: float | None = None
+    no_neck_access: bool | None = None
 
 
 # --- ОСНОВНІ СХЕМИ АВТОМОБІЛЯ ---

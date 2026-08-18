@@ -1,6 +1,7 @@
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from typing import Annotated
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -8,18 +9,22 @@ from sqlalchemy.orm import Session
 
 # Імпортуємо наші розбиті модулі
 from app.api.deps import get_db
-from app.models.vehicle import Vehicle, VehicleFile  # <--- Додали імпорт VehicleFile
-from app.schemas.vehicle import VehicleCreate, VehicleResponse
+from app.models.vehicle import Vehicle, VehicleFile
+
+# === ОСЬ ТУТ ТЕПЕР ПРАВИЛЬНИЙ ІМПОРТ ВСІХ СХЕМ ===
+from app.schemas.vehicle import (
+    VehicleCreate,
+    VehicleResponse,
+    VehicleFileResponse,
+    VehicleFileUpdate,
+)
+from app.services.tare_parser import process_and_save_tare_file
 
 # Створюємо роутер для авто
 router = APIRouter()
 
 # Шлях для збереження файлів тарування
 UPLOAD_DIR = "uploads/tare_files"
-
-from datetime import timedelta
-
-# ... інші твої імпорти
 
 
 # 1. Функція автоочищення
@@ -112,50 +117,65 @@ def restore_file(file_id: int, db: Session = Depends(get_db)):  # noqa: B008
     return {"message": "Файл відновлено"}
 
 
-# --- НОВИЙ ЕНДПОІНТ ДЛЯ ЗАВАНТАЖЕННЯ ТАРУВАЛЬНИХ ТАБЛИЦЬ ---
-# --- ОНОВЛЕНИЙ ЕНДПОІНТ ДЛЯ ЗАВАНТАЖЕННЯ ФАЙЛІВ З ПРИВ'ЯЗКОЮ ---
+# --- ОНОВЛЕНИЙ ЕНДПОІНТ ДЛЯ ЗАВАНТАЖЕННЯ ФАЙЛІВ З ПРИВ'ЯЗКОЮ ТА ПАРСИНГОМ ---
 @router.post("/{vehicle_id}/upload-tare/")
-def upload_tare_file(
+async def upload_tare_file(
     vehicle_id: int,
-    file: UploadFile = File(...),
-    tank_index: int = Form(None),  # <--- Нове: отримуємо індекс баку
-    file_type: str = Form("тарування"),  # <--- Нове: отримуємо тип файлу
-    db: Session = Depends(get_db),  # noqa: B008
+    file: Annotated[UploadFile, File()],
+    db: Annotated[Session, Depends(get_db)],
+    tank_index: Annotated[int | None, Form()] = None,
+    file_type: Annotated[str, Form()] = "тарування",
+    no_neck_access: Annotated[bool, Form()] = False,
 ):
     # 1. Перевіряємо, чи існує авто
     vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
     if not vehicle:
         raise HTTPException(status_code=404, detail="Транспортний засіб не знайдено")
 
-    # 2. Генеруємо унікальне ім'я файлу
-    file_extension = file.filename.split(".")[-1] if "." in file.filename else "file"
-    unique_filename = f"{vehicle_id}_{uuid4().hex[:8]}.{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    # 2. Читаємо вміст файлу
+    content_bytes = await file.read()
+    try:
+        raw_content = content_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        raw_content = content_bytes.decode("cp1251", errors="ignore")
 
-    # 3. Зберігаємо фізичний файл на диск
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # 3. Віддаємо парсеру
+    file_path, new_filename = process_and_save_tare_file(
+        raw_content, file.filename, UPLOAD_DIR
+    )
+
+    if not file_path:
+        raise HTTPException(
+            status_code=400,
+            detail="❌ Формат файлу не розпізнано! Підтримуються: Igla 3D, Navitrack, Epsilon або CSV.",
+        )
 
     # 4. Записуємо інформацію про файл у БД
     db_file = VehicleFile(
         vehicle_id=vehicle_id,
-        file_name=file.filename,
-        file_path=file_path.replace("\\", "/"),
-        tank_index=tank_index,  # <--- Записуємо бак
-        file_type=file_type,  # <--- Записуємо тип
+        file_name=new_filename,
+        file_path=file_path,
+        tank_index=tank_index,
+        file_type=file_type,
+        h1=None,
+        h2=None,
+        no_neck_access=no_neck_access,
     )
     db.add(db_file)
     db.commit()
     db.refresh(db_file)
 
-    # 5. Віддаємо оновлений об'єкт на фронт
+    # ПОВЕРНУВ ТВІЙ ДОВГИЙ СЛОВНИК НА МІСЦЕ
     return {
-        "message": "Файл успішно завантажено",
+        "message": "Файл успішно завантажено та конвертовано в CSV",
         "id": db_file.id,
         "file_name": db_file.file_name,
         "file_path": db_file.file_path,
         "tank_index": db_file.tank_index,
         "file_type": db_file.file_type,
+        "h1": db_file.h1,
+        "h2": db_file.h2,
+        "no_neck_access": db_file.no_neck_access,
     }
 
 
@@ -181,7 +201,6 @@ def get_unique_other_equipment(db: Session = Depends(get_db)):  # noqa: B008
 @router.get("/", response_model=list[VehicleResponse])
 def get_vehicles(db: Session = Depends(get_db)):  # noqa: B008
     """Отримати список усіх транспортних засобів (які не в корзині)"""
-    # Додали фільтр .filter(Vehicle.deleted_at.is_(None))
     return db.query(Vehicle).filter(Vehicle.deleted_at.is_(None)).all()
 
 
@@ -196,27 +215,43 @@ def create_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db)):  # no
 
 # --- ЕНДПОІНТ ОНОВЛЕННЯ ---
 @router.put("/{vehicle_id}", response_model=VehicleResponse)
+@router.put("/{vehicle_id}/", response_model=VehicleResponse)
 def update_vehicle(
     vehicle_id: int,
     vehicle: VehicleCreate,
-    db: Session = Depends(get_db),  # noqa: B008
+    db: Annotated[Session, Depends(get_db)],
 ):
-    # 1. Шукаємо авто в базі
     db_vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
-
-    # 2. Якщо такого немає - віддаємо помилку 404
     if not db_vehicle:
         raise HTTPException(status_code=404, detail="Транспортний засіб не знайдено")
 
-    # 3. Оновлюємо всі поля, які прийшли з фронтенду
     for key, value in vehicle.model_dump().items():
         setattr(db_vehicle, key, value)
 
-    # 4. Зберігаємо зміни
     db.commit()
     db.refresh(db_vehicle)
-
     return db_vehicle
+
+
+# --- НОВИЙ ЕНДПОІНТ: ОНОВЛЕННЯ H1, H2 ТА ГАЛОЧКИ ДЛЯ ФАЙЛУ ---
+@router.put("/files/{file_id}/", response_model=VehicleFileResponse)
+def update_tare_file(
+    file_id: int, file_data: VehicleFileUpdate, db: Annotated[Session, Depends(get_db)]
+):
+    db_file = db.query(VehicleFile).filter(VehicleFile.id == file_id).first()
+    if not db_file:
+        raise HTTPException(status_code=404, detail="Файл не знайдено")
+
+    if file_data.h1 is not None:
+        db_file.h1 = file_data.h1
+    if file_data.h2 is not None:
+        db_file.h2 = file_data.h2
+    if file_data.no_neck_access is not None:
+        db_file.no_neck_access = file_data.no_neck_access
+
+    db.commit()
+    db.refresh(db_file)
+    return db_file
 
 
 @router.delete("/{vehicle_id}")
