@@ -18,17 +18,25 @@ class VehicleFile(Base):
     __tablename__ = "vehicle_files"
 
     id = Column(Integer, primary_key=True, index=True)
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id"))
+    # nullable=True дозволяє файлу відв'язатись від авто і впасти в "Резерв" Архіву
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
     file_name = Column(String, index=True)
     file_path = Column(String)
     file_type = Column(String, default="тарування")
     tank_index = Column(Integer, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
 
+    # --- Дані лінійки ---
     h1 = Column(Float, nullable=True)
     h2 = Column(Float, nullable=True)
-    # === ДОДАЛИ ГАЛОЧКУ ===
     no_neck_access = Column(Boolean, default=False)
+
+    # === АРХІВНІ ДАНІ (ЗЛІПОК БАКА) ===
+    is_etalon = Column(Boolean, default=False)
+    tank_model_id = Column(Integer, ForeignKey("dict_tank_models.id"), nullable=True)
+    actual_volume = Column(Float, nullable=True)
+    tank_photo_path = Column(String, nullable=True)
+    tank_notes = Column(Text, nullable=True)
 
     vehicle = relationship("Vehicle", back_populates="files")
 
