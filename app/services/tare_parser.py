@@ -1,15 +1,17 @@
 import csv
+import io
 import os
 import re
 from uuid import uuid4
 
+import pandas as pd
 
-def standardize_tare_data(raw_content: str) -> list[tuple[float, float]]:
-    """Парсить текст і повертає відсортований список точок [(Літри, Код), ...]."""
+
+def parse_text_content(raw_content: str) -> list[tuple[float, float]]:
+    """Логіка для текстових файлів. Повертає відсортований список [(Літри, Код), ...]."""
     points = []
 
     # 1. Формат IGLA 3D: (Код.Літри)
-    # Наприклад (2109.20) -> Група 1 = 2109 (Код), Група 2 = 20 (Літри)
     igla_matches = re.findall(r"\((\d+)\.(\d+)\)", raw_content)
     if igla_matches and len(igla_matches) > 3:
         return [(float(liters), float(code)) for code, liters in igla_matches]
@@ -21,7 +23,7 @@ def standardize_tare_data(raw_content: str) -> list[tuple[float, float]]:
     if navitrack_matches and len(navitrack_matches) > 3:
         return [(float(liters), float(code)) for liters, code in navitrack_matches]
 
-    # 3. Формат EPSILON / CSV / EXCEL: Літри Код
+    # 3. Формат EPSILON / CSV / TXT: Літри Код
     for line in raw_content.split("\n"):
         line = line.strip()
         if not line:
@@ -31,42 +33,75 @@ def standardize_tare_data(raw_content: str) -> list[tuple[float, float]]:
         if match:
             points.append((float(match.group(1)), float(match.group(2))))
 
-    # Якщо знайшли хоча б 3 точки - сортуємо
     if len(points) >= 3:
         return sorted(points, key=lambda x: x[0])
-
     return []
 
 
+def standardize_tare_data(
+    content_bytes: bytes, filename: str
+) -> list[tuple[float, float]]:
+    """Розпізнає розширення файлу і витягує дані."""
+    # Якщо це EXCEL
+    if filename.lower().endswith((".xls", ".xlsx")):
+        try:
+            # Читаємо Excel, не звертаючи уваги на заголовки
+            df = pd.read_excel(io.BytesIO(content_bytes), header=None)
+            points = []
+
+            # Перебираємо рядки. Очікуємо: колонка 0 = Літри, колонка 1 = Код
+            for _, row in df.iterrows():
+                try:
+                    liters = float(row[0])
+                    code = float(row[1])
+                    points.append((liters, code))
+                except (ValueError, TypeError):
+                    continue  # Пропускаємо рядки з текстом (заголовки)
+
+            if len(points) >= 3:
+                return sorted(points, key=lambda x: x[0])
+            return []
+        except Exception as e:
+            print(f"Помилка парсингу Excel: {e}")
+            return []
+
+    # Якщо це звичайний ТЕКСТОВИЙ файл (.csv, .txt, .xml тощо)
+    else:
+        try:
+            raw_content = content_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            raw_content = content_bytes.decode("cp1251", errors="ignore")
+
+        return parse_text_content(raw_content)
+
+
 def process_and_save_tare_file(
-    raw_content: str, original_filename: str, upload_dir: str
+    content_bytes: bytes, original_filename: str, upload_dir: str
 ) -> tuple[str, str]:
-    """Створює ідеальний стандартизований CSV і повертає (шлях, нове_імя)."""
-    points = standardize_tare_data(raw_content)
+    """Створює ідеальний стандартизований CSV (Код,Літри) без заголовків."""
+
+    points = standardize_tare_data(content_bytes, original_filename)
     if not points:
-        # Якщо нічого не знайшли, повертаємо None
         return None, None
 
     os.makedirs(upload_dir, exist_ok=True)
     base_name = os.path.splitext(original_filename)[0]
 
-    # Генеруємо назву файлу
     new_filename = f"{base_name}_standard.csv"
     unique_filename = f"{uuid4().hex[:8]}_{new_filename}"
     file_path = os.path.join(upload_dir, unique_filename)
 
     # Зберігаємо "чистий" пролив
     with open(file_path, mode="w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Об'єм (л)", "Код ДВРП"])
-        for liters, code in points:
-            # int(liters) відкидає .0, якщо число ціле (20.0 -> 20)
-            writer.writerow(
-                [
-                    int(liters) if liters.is_integer() else liters,
-                    int(code) if code.is_integer() else code,
-                ]
-            )
+        # Розділювачем ставимо звичайну кому (якщо треба крапку з комою, зміни delimiter на ";")
+        writer = csv.writer(f, delimiter=",")
 
-    # Повертаємо нормальні слеші для бази даних
+        # ЗАГОЛОВКІВ НЕМАЄ ВЗАГАЛІ
+        for liters, code in points:
+            l_val = int(liters) if liters.is_integer() else liters
+            c_val = int(code) if code.is_integer() else code
+
+            # Пишемо у форматі: X (Код), Y (Літри)
+            writer.writerow([c_val, l_val])
+
     return file_path.replace("\\", "/"), new_filename

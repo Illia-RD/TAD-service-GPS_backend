@@ -134,19 +134,16 @@ async def upload_tare_file(
     if not vehicle:
         raise HTTPException(status_code=404, detail="Транспортний засіб не знайдено")
 
+    # Просто читаємо байти і віддаємо у парсер!
     content_bytes = await file.read()
-    try:
-        raw_content = content_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        raw_content = content_bytes.decode("cp1251", errors="ignore")
-
     file_path, new_filename = process_and_save_tare_file(
-        raw_content, file.filename, UPLOAD_DIR
+        content_bytes, file.filename, UPLOAD_DIR
     )
+
     if not file_path:
         raise HTTPException(
             status_code=400,
-            detail="❌ Формат файлу не розпізнано! Підтримуються: Igla 3D, Navitrack, Epsilon або CSV.",
+            detail="❌ Формат файлу не розпізнано! Перевірте вміст.",
         )
 
     db_file = VehicleFile(
