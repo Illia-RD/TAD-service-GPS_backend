@@ -8,7 +8,9 @@ class TankItem(BaseModel):
     tank_volume: float | None = None  # Паспортний об'єм
     actual_volume: float | None = None  # Фактичний об'єм
     notes: str | None = None  # <--- ПРИМІТКА (зам'ятий, зміщено ДРП)
-    photo_path: str | None = None  # <--- ФОТО конкретного бака на авто
+    photo_paths: list[str] = Field(
+        default_factory=list
+    )  # <--- ФОТО конкретного бака на авто
 
 
 class DrpItem(BaseModel):
