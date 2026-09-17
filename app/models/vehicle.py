@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -18,7 +20,6 @@ class VehicleFile(Base):
     __tablename__ = "vehicle_files"
 
     id = Column(Integer, primary_key=True, index=True)
-    # nullable=True дозволяє файлу відв'язатись від авто і впасти в "Резерв" Архіву
     vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
     file_name = Column(String, index=True)
     file_path = Column(String)
@@ -41,6 +42,58 @@ class VehicleFile(Base):
     vehicle = relationship("Vehicle", back_populates="files")
 
 
+# === НОВЕ: ТАБЛИЦЯ ТРЕКЕРІВ ===
+class Tracker(Base):
+    __tablename__ = "trackers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    imei = Column(String, unique=True, index=True, nullable=False)
+    model = Column(String, nullable=True)
+    serial_number = Column(String, nullable=True)
+    sent_id = Column(String, nullable=True)  # ID для польської системи SENT
+
+    # Статуси: new, used, broken, repair, diagnostics
+    status = Column(String, default="new")
+
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    vehicle = relationship("Vehicle", back_populates="trackers")
+    sim_cards = relationship("SimCard", back_populates="tracker")
+
+
+# === НОВЕ: ТАБЛИЦЯ СІМ-КАРТ ===
+class SimCard(Base):
+    __tablename__ = "sim_cards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    phone_number = Column(String, unique=True, index=True, nullable=False)
+    iccid = Column(String, unique=True, nullable=True)
+    operator = Column(String, nullable=True)
+
+    # Статуси: new, active, problematic, deactivated
+    status = Column(String, default="new")
+
+    tracker_id = Column(Integer, ForeignKey("trackers.id"), nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+
+    tracker = relationship("Tracker", back_populates="sim_cards")
+
+
+# === НОВЕ: ІСТОРІЯ РУХУ ОБЛАДНАННЯ ===
+class EquipmentLog(Base):
+    __tablename__ = "equipment_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String, nullable=False)  # 'tracker' або 'sim'
+    entity_id = Column(Integer, nullable=False)
+    action = Column(String, nullable=False)  # 'installed', 'removed', 'status_changed'
+    description = Column(Text, nullable=True)
+
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class Vehicle(Base):
     __tablename__ = "vehicles"
 
@@ -57,7 +110,7 @@ class Vehicle(Base):
     status = Column(String, default="connected")
     other_equipment = Column(String, nullable=True)
 
-    trackers_data = Column(JSON, default=list)
+    # Трекери тепер не JSON, а повноцінний зв'язок!
     tanks_data = Column(JSON, default=list)
     drps_data = Column(JSON, default=list)
     notes = Column(Text, nullable=True)
@@ -73,4 +126,11 @@ class Vehicle(Base):
         back_populates="vehicle",
         cascade="all, delete-orphan",
         primaryjoin="and_(Vehicle.id == VehicleFile.vehicle_id, VehicleFile.deleted_at == None)",
+    )
+
+    # Зв'язок з трекерами
+    trackers = relationship(
+        "Tracker",
+        back_populates="vehicle",
+        primaryjoin="and_(Vehicle.id == Tracker.vehicle_id, Tracker.deleted_at == None)",
     )
