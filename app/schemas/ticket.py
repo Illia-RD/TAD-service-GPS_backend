@@ -1,43 +1,41 @@
 from datetime import datetime
-from typing import List, Optional
-
-from pydantic import BaseModel
-
+from pydantic import BaseModel, ConfigDict
 from app.models.ticket import PriorityEnum, StatusEnum, TicketGroupEnum
 
 
-# Схема для однієї задачі (щоб віддавати на фронт)
-class TaskSchema(BaseModel):
-    id: int
+class TaskBase(BaseModel):
     description: str
-    is_completed: bool
+    is_completed: bool = False
 
-    class Config:
-        from_attributes = True
+
+class TaskCreate(TaskBase):
+    pass
+
+
+class TaskResponse(TaskBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TicketBase(BaseModel):
     vehicle_id: int
-    priority: Optional[PriorityEnum] = PriorityEnum.medium
-    status: Optional[StatusEnum] = StatusEnum.queue
-    ticket_group: TicketGroupEnum
-    comment: Optional[str] = None  # Загальний коментар до тікета
-    planned_at: Optional[datetime] = None
-    creator_id: Optional[int] = None
+    priority: PriorityEnum = PriorityEnum.medium
+    status: StatusEnum = StatusEnum.queue
+    ticket_group: TicketGroupEnum = TicketGroupEnum.mechanics
+    comment: str | None = None
+    planned_at: datetime | None = None
+    creator_id: int | None = None
 
 
 class TicketCreate(TicketBase):
-    tasks: List[str]  # Фронт буде присилати масив: ["Заміна ДВРП", "Тарування"]
+    tasks: list[str] = []  # Фронт присилає масив рядків для створення
 
 
-class TicketSchema(TicketBase):
+class TicketResponse(TicketBase):
     id: int
-    title: str  # Згенеруємо автоматично з задач
+    title: str
     created_at: datetime
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-
-    tasks: List[TaskSchema] = []  # Вкладаємо задачі всередину тікета
-
-    class Config:
-        from_attributes = True
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    tasks: list[TaskResponse] = []
+    model_config = ConfigDict(from_attributes=True)

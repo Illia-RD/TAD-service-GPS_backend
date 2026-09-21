@@ -1,19 +1,17 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.dependencies import DbSession
 from app.models.dictionary import (
-    DrpType,
-    EuroStandard,
-    SimOperator,
-    TankModel,
-    TaskTemplate,
-    TrackerModel,
-    VehicleGroup,
     VehicleMake,
     VehicleModel,
+    LlsModel,
+    TaskTemplate,
+    EuroStandard,
+    TrackerModel,
+    SimOperator,
+    VehicleGroup,
+    TankModel,
 )
 from app.schemas.dictionary import (
     DictItemCreate,
@@ -23,9 +21,6 @@ from app.schemas.dictionary import (
 )
 
 router = APIRouter()
-
-# Використовуємо Annotated, щоб Ruff не матюкався на B008
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 def get_or_create(db: Session, model_class, name: str):
@@ -39,6 +34,9 @@ def get_or_create(db: Session, model_class, name: str):
     return new_item
 
 
+# --- ПРОСТІ ДОВІДНИКИ ---
+
+
 @router.get("/makes", response_model=list[DictItemResponse])
 def get_makes(db: DbSession):
     return db.query(VehicleMake).all()
@@ -49,14 +47,24 @@ def create_make(item: DictItemCreate, db: DbSession):
     return get_or_create(db, VehicleMake, item.name)
 
 
-@router.get("/drp-types", response_model=list[DictItemResponse])
-def get_drp_types(db: DbSession):
-    return db.query(DrpType).all()
+@router.get("/models", response_model=list[DictItemResponse])
+def get_models(db: DbSession):
+    return db.query(VehicleModel).all()
 
 
-@router.post("/drp-types", response_model=DictItemResponse)
-def create_drp_type(item: DictItemCreate, db: DbSession):
-    return get_or_create(db, DrpType, item.name)
+@router.post("/models", response_model=DictItemResponse)
+def create_model(item: DictItemCreate, db: DbSession):
+    return get_or_create(db, VehicleModel, item.name)
+
+
+@router.get("/lls-models", response_model=list[DictItemResponse])
+def get_lls_models(db: DbSession):
+    return db.query(LlsModel).all()
+
+
+@router.post("/lls-models", response_model=DictItemResponse)
+def create_lls_model(item: DictItemCreate, db: DbSession):
+    return get_or_create(db, LlsModel, item.name)
 
 
 @router.get("/tasks", response_model=list[DictItemResponse])
@@ -67,16 +75,6 @@ def get_tasks(db: DbSession):
 @router.post("/tasks", response_model=DictItemResponse)
 def create_task(item: DictItemCreate, db: DbSession):
     return get_or_create(db, TaskTemplate, item.name)
-
-
-@router.get("/models", response_model=list[DictItemResponse])
-def get_models(db: DbSession):
-    return db.query(VehicleModel).all()
-
-
-@router.post("/models", response_model=DictItemResponse)
-def create_model(item: DictItemCreate, db: DbSession):
-    return get_or_create(db, VehicleModel, item.name)
 
 
 @router.get("/euro-standards", response_model=list[DictItemResponse])
@@ -119,7 +117,9 @@ def create_group(item: DictItemCreate, db: DbSession):
     return get_or_create(db, VehicleGroup, item.name)
 
 
-# --- ДОВІДНИК БАКІВ (КАТАЛОГ) ---
+# --- АРХІВ БАКІВ (КАТАЛОГ) ---
+
+
 @router.get("/tank-models", response_model=list[TankModelResponse])
 def get_tank_models(db: DbSession):
     return db.query(TankModel).all()
