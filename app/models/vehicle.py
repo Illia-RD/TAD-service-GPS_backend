@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, JSON, Text, DateTime
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
-from .base import Base
+
+from app.core.database import Base
 
 
 class Vehicle(Base):

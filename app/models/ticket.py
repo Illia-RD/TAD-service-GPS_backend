@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -12,7 +13,8 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import relationship
-from .base import Base
+
+from app.core.database import Base
 
 
 class RoleEnum(str, enum.Enum):

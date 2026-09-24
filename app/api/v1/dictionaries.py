@@ -3,17 +3,20 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import DbSession
 from app.models.dictionary import (
+    CustomFieldTemplate,
+    EuroStandard,
+    LlsModel,
+    SimOperator,
+    TankModel,
+    TaskTemplate,
+    TrackerModel,
+    VehicleGroup,
     VehicleMake,
     VehicleModel,
-    LlsModel,
-    TaskTemplate,
-    EuroStandard,
-    TrackerModel,
-    SimOperator,
-    VehicleGroup,
-    TankModel,
 )
 from app.schemas.dictionary import (
+    CustomFieldTemplateCreate,
+    CustomFieldTemplateResponse,
     DictItemCreate,
     DictItemResponse,
     TankModelCreate,
@@ -132,3 +135,22 @@ def create_tank_model(item: TankModelCreate, db: DbSession):
     db.commit()
     db.refresh(db_item)
     return db_item
+
+
+# --- КОНСТРУКТОР КАСТОМНИХ ПОЛІВ ---
+
+
+@router.get("/custom-fields", response_model=list[CustomFieldTemplateResponse])
+def get_custom_fields(db: DbSession):
+    """Отримати всі шаблони кастомних полів для форми (Електрика, Механіка тощо)"""
+    return db.query(CustomFieldTemplate).all()
+
+
+@router.post("/custom-fields", response_model=CustomFieldTemplateResponse)
+def create_custom_field(field: CustomFieldTemplateCreate, db: DbSession):
+    """Створити нове поле для конструктора"""
+    db_field = CustomFieldTemplate(**field.model_dump())
+    db.add(db_field)
+    db.commit()
+    db.refresh(db_field)
+    return db_field

@@ -1,5 +1,4 @@
 from pydantic import BaseModel, ConfigDict, Field
-from datetime import datetime
 
 
 # --- SIM Cards ---
@@ -74,5 +73,5 @@ class LlsSensorCreate(LlsSensorBase):
 
 class LlsSensorResponse(LlsSensorBase):
     id: int
-    vehicle_id: int
+    vehicle_id: int | None = None
     model_config = ConfigDict(from_attributes=True)

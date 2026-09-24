@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Float, Integer, String
+from sqlalchemy import JSON, Boolean, Column, Float, Integer, String
 
-from .base import Base
+from app.core.database import Base
 
 
 class VehicleMake(Base):
@@ -63,3 +63,15 @@ class TankModel(Base):
     step_l = Column(Float, nullable=True)
     step_w = Column(Float, nullable=True)
     step_h = Column(Float, nullable=True)
+
+
+class CustomFieldTemplate(Base):
+    """Шаблони для конструктора форми (динамічні поля)"""
+
+    __tablename__ = "dict_custom_field_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    department = Column(String, index=True)  # Напр., "Електрика", "Механіка", "РВА"
+    field_name = Column(String, nullable=False)  # Напр., "Проблисковий маячок"
+    field_type = Column(String, default="text")  # "text", "number", "boolean", "select"
+    options = Column(JSON, nullable=True)  # Якщо select - тут масив ["Hella", "Bosch"]
+    is_required = Column(Boolean, default=False)

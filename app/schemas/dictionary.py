@@ -33,3 +33,20 @@ class TankModelCreate(TankModelBase):
 class TankModelResponse(TankModelBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
+
+
+class CustomFieldTemplateBase(BaseModel):
+    department: str
+    field_name: str
+    field_type: str = "text"
+    options: list[str] | None = None
+    is_required: bool = False
+
+
+class CustomFieldTemplateCreate(CustomFieldTemplateBase):
+    pass
+
+
+class CustomFieldTemplateResponse(CustomFieldTemplateBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)

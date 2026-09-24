@@ -15,11 +15,13 @@ router = APIRouter()
 UPLOAD_DIR = "uploads/tare_files"
 
 
+@router.get("", response_model=list[VehicleResponse])
 @router.get("/", response_model=list[VehicleResponse])
 def get_vehicles(db: DbSession):
     return vehicle_service.get_all_vehicles(db)
 
 
+@router.post("", response_model=VehicleResponse)
 @router.post("/", response_model=VehicleResponse)
 def create_vehicle(vehicle_in: VehicleCreate, db: DbSession):
     return vehicle_service.create_vehicle(db, vehicle_in)
