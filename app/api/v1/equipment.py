@@ -156,11 +156,6 @@ def get_archive_sims(db: DbSession):
     return db.query(SimCard).filter(SimCard.tracker_id.is_(None)).all()
 
 
-@router.get("/sim-cards/archive", response_model=list[SimCardResponse])
-def get_archive_sims(db: DbSession):
-    return db.query(SimCard).filter(SimCard.tracker_id.is_(None)).all()
-
-
 @router.post("/sim-cards", response_model=SimCardResponse)
 def create_sim(sim: SimCardCreate, db: DbSession):
     sim_data = sim.model_dump()
