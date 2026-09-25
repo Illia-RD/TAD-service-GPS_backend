@@ -45,6 +45,12 @@ class SimOperator(Base):
     name = Column(String, unique=True, index=True, nullable=False)
 
 
+class SimNetworkStatus(Base):
+    __tablename__ = "dict_sim_network_statuses"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+
+
 class VehicleGroup(Base):
     __tablename__ = "dict_vehicle_groups"
     id = Column(Integer, primary_key=True, index=True)

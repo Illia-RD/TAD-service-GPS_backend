@@ -70,10 +70,19 @@ class Tracker(Base):
 class SimCard(Base):
     __tablename__ = "sim_cards"
     id = Column(Integer, primary_key=True, index=True)
+    short_id = Column(
+        String, unique=True, index=True, nullable=False
+    )  # Короткий ID, напр. 00001
     phone_number = Column(String, unique=True, index=True, nullable=False)
     iccid = Column(String, unique=True, nullable=True)
     operator = Column(String, nullable=True)
-    status = Column(String, default="in_stock")
+
+    # Фізичний стан: new (Нова) або used (Б/В)
+    condition = Column(String, default="new")
+
+    # Стан в мережі (зі словника): Призупинена, Активна, Деактивована...
+    network_status = Column(String, default="Призупинена")
+
     tracker_id = Column(Integer, ForeignKey("trackers.id"), nullable=True)
     deleted_at = Column(DateTime, nullable=True)
 

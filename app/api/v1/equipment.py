@@ -149,7 +149,11 @@ def unassign_lls(sensor_id: int, db: DbSession):
 
 
 # --- СІМ-КАРТИ ---
-# (залишаю твій код, тільки додав log_history)
+
+
+@router.get("/sim-cards/archive", response_model=list[SimCardResponse])
+def get_archive_sims(db: DbSession):
+    return db.query(SimCard).filter(SimCard.tracker_id.is_(None)).all()
 
 
 @router.get("/sim-cards/archive", response_model=list[SimCardResponse])
@@ -159,12 +163,27 @@ def get_archive_sims(db: DbSession):
 
 @router.post("/sim-cards", response_model=SimCardResponse)
 def create_sim(sim: SimCardCreate, db: DbSession):
-    db_sim = SimCard(**sim.model_dump())
+    sim_data = sim.model_dump()
+
+    # Автогенерація short_id (00001, 00002...), якщо не передано з фронту
+    if not sim_data.get("short_id"):
+        last_sim = db.query(SimCard).order_by(SimCard.id.desc()).first()
+        if last_sim and last_sim.short_id and last_sim.short_id.isdigit():
+            next_id = int(last_sim.short_id) + 1
+        else:
+            next_id = db.query(SimCard).count() + 1
+        sim_data["short_id"] = str(next_id).zfill(5)
+
+    db_sim = SimCard(**sim_data)
     db.add(db_sim)
     db.commit()
     db.refresh(db_sim)
-    log_history(db, "created", "СІМ-картку додано на склад", sim_card_id=db_sim.id)
-    db.commit()
+    log_history(
+        db,
+        "created",
+        f"СІМ-картку {db_sim.short_id} додано на склад",
+        sim_card_id=db_sim.id,
+    )
     return db_sim
 
 
@@ -174,7 +193,11 @@ def assign_sim(sim_id: int, tracker_id: int, db: DbSession):
     if not sim:
         raise HTTPException(status_code=404, detail="СІМ-карту не знайдено")
     sim.tracker_id = tracker_id
-    sim.status = "active"
+
+    # Автоматично робимо її Б/В при першій вставці
+    if sim.condition == "new":
+        sim.condition = "used"
+
     log_history(
         db,
         "installed",
@@ -193,7 +216,7 @@ def unassign_sim(sim_id: int, db: DbSession):
         raise HTTPException(status_code=404, detail="СІМ-карту не знайдено")
     old_tracker = sim.tracker_id
     sim.tracker_id = None
-    sim.status = "used"
+    # condition залишається "used" - бо вона вже була у використанні!
     log_history(
         db, "uninstalled", f"Витягнуто з трекера ID {old_tracker}", sim_card_id=sim_id
     )

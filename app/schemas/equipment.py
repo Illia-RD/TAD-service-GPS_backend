@@ -3,10 +3,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # --- SIM Cards ---
 class SimCardBase(BaseModel):
+    short_id: str | None = None  # Необов'язкове при створенні, згенеруємо самі
     phone_number: str
     iccid: str | None = None
     operator: str | None = None
-    status: str = "new"
+    condition: str = "new"
+    network_status: str | None = "Призупинена"
 
 
 class SimCardCreate(SimCardBase):

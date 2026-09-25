@@ -6,6 +6,7 @@ from app.models.dictionary import (
     CustomFieldTemplate,
     EuroStandard,
     LlsModel,
+    SimNetworkStatus,
     SimOperator,
     TankModel,
     TaskTemplate,
@@ -108,6 +109,19 @@ def get_sims(db: DbSession):
 @router.post("/sim-operators", response_model=DictItemResponse)
 def create_sim(item: DictItemCreate, db: DbSession):
     return get_or_create(db, SimOperator, item.name)
+
+
+# --- СТАТУСИ МЕРЕЖІ СІМ-КАРТ ---
+
+
+@router.get("/sim-network-statuses", response_model=list[DictItemResponse])
+def get_sim_network_statuses(db: DbSession):
+    return db.query(SimNetworkStatus).all()
+
+
+@router.post("/sim-network-statuses", response_model=DictItemResponse)
+def create_sim_network_status(item: DictItemCreate, db: DbSession):
+    return get_or_create(db, SimNetworkStatus, item.name)
 
 
 @router.get("/groups", response_model=list[DictItemResponse])
