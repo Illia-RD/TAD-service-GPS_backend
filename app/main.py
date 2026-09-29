@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.v1 import dictionaries, equipment, tickets, vehicles
+from app.api.v1 import dictionaries, equipment, tare, tickets, vehicles
 from app.core.config import settings
 from app.core.database import Base, engine
 
@@ -34,3 +34,4 @@ app.include_router(
 app.include_router(vehicles.router, prefix="/api/v1/vehicles", tags=["Vehicles"])
 app.include_router(equipment.router, prefix="/api/v1/equipment", tags=["Equipment"])
 app.include_router(tickets.router, prefix="/api/v1/tickets", tags=["Tickets"])
+app.include_router(tare.router, prefix="/api/v1/tare", tags=["Tare Archive"])

@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.models.equipment import FuelTank, LlsSensor
-from app.models.vehicle import Vehicle
+from app.models.equipment import LlsSensor
+from app.models.vehicle import FuelTank, Vehicle
 from app.schemas.vehicle import VehicleCreate
 
 

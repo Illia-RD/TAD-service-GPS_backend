@@ -1,26 +1,42 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from .equipment import (
-    FuelTankCreate,
-    FuelTankResponse,
     LlsSensorCreate,
     LlsSensorResponse,
     TrackerResponse,
 )
 
 
+# --- Vehicle Files (Очищено від тарування) ---
 class VehicleFileResponse(BaseModel):
     id: int
     file_name: str
     file_path: str
-    file_type: str | None = "тарування"
-    tank_index: int | None = None
-    h1: float | None = None
-    h2: float | None = None
-    no_neck_access: bool | None = False
+    file_type: str | None = "документ"
     model_config = ConfigDict(from_attributes=True)
 
 
+# --- Fuel Tanks (Перенесено сюди з equipment) ---
+class FuelTankBase(BaseModel):
+    tank_model_id: int | None = None
+    tar_archive_id: int | None = None  # Прив'язка до еталонного ТАР файлу
+    tank_volume: float | None = None
+    actual_volume: float | None = None
+    notes: str | None = None
+    photo_paths: list[str] = Field(default_factory=list)
+
+
+class FuelTankCreate(FuelTankBase):
+    pass
+
+
+class FuelTankResponse(FuelTankBase):
+    id: int
+    vehicle_id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- Vehicle ---
 class VehicleBase(BaseModel):
     internal_id: str
     plate: str

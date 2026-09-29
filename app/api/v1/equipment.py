@@ -47,10 +47,11 @@ def get_archive_trackers(db: DbSession):
 def create_tracker(tracker: TrackerCreate, db: DbSession):
     db_tracker = Tracker(**tracker.model_dump())
     db.add(db_tracker)
-    db.commit()
-    db.refresh(db_tracker)
+    db.flush()  # Отримуємо ID без повної фіксації транзакції
+
     log_history(db, "created", "Прийнято на склад", tracker_id=db_tracker.id)
     db.commit()
+    db.refresh(db_tracker)
     return db_tracker
 
 
@@ -59,8 +60,10 @@ def assign_tracker(tracker_id: int, vehicle_id: int, db: DbSession):
     tracker = db.query(Tracker).filter(Tracker.id == tracker_id).first()
     if not tracker:
         raise HTTPException(status_code=404, detail="Трекер не знайдено")
+
     tracker.vehicle_id = vehicle_id
     tracker.status = "installed"
+
     log_history(
         db,
         "installed",
@@ -77,9 +80,11 @@ def unassign_tracker(tracker_id: int, db: DbSession):
     tracker = db.query(Tracker).filter(Tracker.id == tracker_id).first()
     if not tracker:
         raise HTTPException(status_code=404, detail="Трекер не знайдено")
+
     old_vehicle_id = tracker.vehicle_id
     tracker.vehicle_id = None
-    tracker.status = "used"
+    tracker.status = "in_stock"  # Повертаємо на склад
+
     log_history(
         db,
         "uninstalled",
@@ -103,10 +108,11 @@ def get_archive_lls(db: DbSession):
 def create_lls(sensor: LlsSensorCreate, db: DbSession):
     db_sensor = LlsSensor(**sensor.model_dump())
     db.add(db_sensor)
-    db.commit()
-    db.refresh(db_sensor)
+    db.flush()
+
     log_history(db, "created", "Прийнято на склад", lls_sensor_id=db_sensor.id)
     db.commit()
+    db.refresh(db_sensor)
     return db_sensor
 
 
@@ -115,8 +121,10 @@ def assign_lls(sensor_id: int, vehicle_id: int, db: DbSession):
     sensor = db.query(LlsSensor).filter(LlsSensor.id == sensor_id).first()
     if not sensor:
         raise HTTPException(status_code=404, detail="ДВРП не знайдено")
+
     sensor.vehicle_id = vehicle_id
     sensor.status = "installed"
+
     log_history(
         db,
         "installed",
@@ -133,10 +141,12 @@ def unassign_lls(sensor_id: int, db: DbSession):
     sensor = db.query(LlsSensor).filter(LlsSensor.id == sensor_id).first()
     if not sensor:
         raise HTTPException(status_code=404, detail="ДВРП не знайдено")
+
     old_vehicle_id = sensor.vehicle_id
     sensor.vehicle_id = None
     sensor.tank_id = None  # Знімаємо з бака теж
-    sensor.status = "used"
+    sensor.status = "in_stock"
+
     log_history(
         db,
         "uninstalled",
@@ -160,7 +170,6 @@ def get_archive_sims(db: DbSession):
 def create_sim(sim: SimCardCreate, db: DbSession):
     sim_data = sim.model_dump()
 
-    # Автогенерація short_id (00001, 00002...), якщо не передано з фронту
     if not sim_data.get("short_id"):
         last_sim = db.query(SimCard).order_by(SimCard.id.desc()).first()
         if last_sim and last_sim.short_id and last_sim.short_id.isdigit():
@@ -171,14 +180,16 @@ def create_sim(sim: SimCardCreate, db: DbSession):
 
     db_sim = SimCard(**sim_data)
     db.add(db_sim)
-    db.commit()
-    db.refresh(db_sim)
+    db.flush()
+
     log_history(
         db,
         "created",
         f"СІМ-картку {db_sim.short_id} додано на склад",
         sim_card_id=db_sim.id,
     )
+    db.commit()
+    db.refresh(db_sim)
     return db_sim
 
 
@@ -187,9 +198,8 @@ def assign_sim(sim_id: int, tracker_id: int, db: DbSession):
     sim = db.query(SimCard).filter(SimCard.id == sim_id).first()
     if not sim:
         raise HTTPException(status_code=404, detail="СІМ-карту не знайдено")
-    sim.tracker_id = tracker_id
 
-    # Автоматично робимо її Б/В при першій вставці
+    sim.tracker_id = tracker_id
     if sim.condition == "new":
         sim.condition = "used"
 
@@ -209,9 +219,10 @@ def unassign_sim(sim_id: int, db: DbSession):
     sim = db.query(SimCard).filter(SimCard.id == sim_id).first()
     if not sim:
         raise HTTPException(status_code=404, detail="СІМ-карту не знайдено")
+
     old_tracker = sim.tracker_id
     sim.tracker_id = None
-    # condition залишається "used" - бо вона вже була у використанні!
+
     log_history(
         db, "uninstalled", f"Витягнуто з трекера ID {old_tracker}", sim_card_id=sim_id
     )

@@ -41,32 +41,14 @@ class TrackerResponse(TrackerBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# --- Fuel Tanks ---
-class FuelTankBase(BaseModel):
-    tank_model_id: int | None = None
-    tank_volume: float | None = None
-    actual_volume: float | None = None
-    notes: str | None = None
-    photo_paths: list[str] = Field(default_factory=list)
-
-
-class FuelTankCreate(FuelTankBase):
-    pass
-
-
-class FuelTankResponse(FuelTankBase):
-    id: int
-    vehicle_id: int
-    model_config = ConfigDict(from_attributes=True)
-
-
 # --- LLS Sensors (ДВРП) ---
 class LlsSensorBase(BaseModel):
     tank_id: int | None = None
-    lls_model: str | None = None  # Замість drp_type
+    lls_model: str | None = None
     serial_number: str | None = None
-    lls_height: float | None = None  # Замість drp_height
+    lls_height: float | None = None
     connection_type: str | None = "RS485"
+    status: str | None = "in_stock"  # Фікс статусу для складу
 
 
 class LlsSensorCreate(LlsSensorBase):
