@@ -1,4 +1,6 @@
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -37,14 +39,14 @@ async def upload_archive_tare(
 ):
     content_bytes = await file.read()
 
-    # Зверни увагу: я використовую `_` для new_filename, щоб Pylance не сварився
+    # file_path матиме вигляд типу "uploads/tare_files/6ca840f5_nazva.csv"
     file_path, _ = process_and_save_tare_file(content_bytes, file.filename, UPLOAD_DIR)
 
     if not file_path:
         raise HTTPException(status_code=400, detail="Формат файлу не розпізнано!")
 
-    # Генеруємо назву, якщо її немає
-    default_name = f"{original_vehicle_number or 'Невідоме авто'} / {datetime.now().strftime('%d.%m.%Y')}"
+    # Витягуємо чисту назву без розширення .csv (напр. "ВХ 8654 ІС_standart")
+    clean_file_name = Path(file.filename).stem
 
     parsed_date = datetime.now(timezone.utc)
     if created_at:
@@ -54,7 +56,7 @@ async def upload_archive_tare(
             pass
 
     db_file = TarArchive(
-        file_name=default_name,
+        file_name=clean_file_name,  # <--- Записуємо оригінальну назву
         original_vehicle_number=original_vehicle_number,
         file_path=file_path,
         is_favorite=is_favorite,
@@ -84,6 +86,35 @@ def update_tar_archive(tar_id: int, update_data: TarArchiveUpdate, db: DbSession
         raise HTTPException(status_code=404, detail="ТАР файл не знайдено")
 
     update_dict = update_data.model_dump(exclude_unset=True)
+
+    # --- ЛОГІКА ПЕРЕЙМЕНУВАННЯ ФІЗИЧНОГО ФАЙЛУ ---
+    if "file_name" in update_dict and update_dict["file_name"] != db_file.file_name:
+        new_clean_name = update_dict["file_name"]
+        old_path = Path(db_file.file_path)
+
+        if old_path.exists():
+            old_filename = old_path.name
+            # Розділяємо по першому '_', щоб відділити UUID (якщо він є)
+            parts = old_filename.split("_", 1)
+
+            # Якщо є UUID на початку (напр. 6ca840f5), зберігаємо його
+            if len(parts) == 2 and len(parts[0]) >= 8:
+                prefix = parts[0]
+                new_filename = f"{prefix}_{new_clean_name}.csv"
+            else:
+                new_filename = f"{new_clean_name}.csv"
+
+            new_path = old_path.parent / new_filename
+
+            try:
+                os.rename(old_path, new_path)
+                update_dict["file_path"] = str(new_path)  # Оновлюємо шлях для БД
+            except OSError as e:
+                print(f"Помилка перейменування файлу на диску: {e}")
+                # Якщо не змогли перейменувати фізично - краще залишити як є,
+                # щоб не втратити доступ до файлу
+
+    # Застосовуємо всі оновлення до моделі
     for key, value in update_dict.items():
         setattr(db_file, key, value)
 
@@ -105,7 +136,6 @@ def delete_tar_archive(tar_id: int, db: DbSession):
 
 @router.get("/{tar_id}/vehicles")
 def get_vehicles_for_tar(tar_id: int, db: DbSession):
-    # Шукаємо всі баки, до яких прив'язаний цей ТАР-файл
     tanks = db.query(FuelTank).filter(FuelTank.tar_archive_id == tar_id).all()
 
     result = []
